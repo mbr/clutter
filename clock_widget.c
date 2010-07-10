@@ -9,7 +9,7 @@
 #define debug(...) g_debug(__VA_ARGS__)
 #endif
 
-static double pi;
+//static double pi;
 
 static gboolean set_alpha(GtkWidget *widget, gboolean alpha) {
 	GdkScreen *screen = gtk_widget_get_screen(widget);
@@ -82,7 +82,6 @@ void deskwidget_make_unwidgety(deskwidget_t *deskwidget) {
 	gtk_window_set_keep_below(window, FALSE);
 	gtk_window_set_decorated(window, TRUE);
 	gtk_widget_set_app_paintable(deskwidget->window, FALSE);
-
 	g_signal_handler_disconnect(G_OBJECT(window), deskwidget->handler_screen_changed);
 	deskwidget->alpha_enabled = set_alpha(deskwidget->window, FALSE);
 }
@@ -94,7 +93,7 @@ deskwidget_t *deskwidget_new() {
 }
 
 int main(int argc, char **argv) {
-	pi = acos(-1);
+//	pi = acos(-1);
 
 	gtk_init(&argc, &argv);
 

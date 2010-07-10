@@ -3,52 +3,94 @@
 #include <cairo/cairo.h>
 #include <math.h>
 
+#if !G_DEBUG
+#define debug(...)
+#else
+#define debug(...) g_debug(__VA_ARGS__)
+#endif
+
 static double pi;
 
-void make_widgety(GtkWindow *widget) {
-	gtk_window_set_skip_taskbar_hint(widget, TRUE);
-	gtk_window_set_skip_pager_hint(widget, TRUE);
-	gtk_window_set_keep_below(widget, TRUE);
-	gtk_window_set_decorated(widget, FALSE);
-}
+static gboolean set_alpha(GtkWidget *widget, gboolean alpha) {
+	GdkScreen *screen = gtk_widget_get_screen(widget);
+	GdkColormap *colormap_rgb = gdk_screen_get_rgb_colormap(screen);
+	GdkColormap *colormap_rgba = gdk_screen_get_rgba_colormap(screen);
 
-void make_unwidgety(GtkWindow *widget) {
-	gtk_window_set_skip_taskbar_hint(widget, FALSE);
-	gtk_window_set_skip_pager_hint(widget, FALSE);
-	gtk_window_set_keep_below(widget, FALSE);
-	gtk_window_set_decorated(widget, TRUE);
+	gboolean alpha_support = FALSE;
+
+	if (alpha) {
+		if (!colormap_rgba) {
+			debug("No alpha support!");
+			gtk_widget_set_colormap(widget, colormap_rgb);
+		} else {
+			debug("Enabling alpha support.");
+			gtk_widget_set_colormap(widget, colormap_rgba);
+		}
+	} else {
+		debug("No alpha support requested");
+		gtk_widget_set_colormap(widget, colormap_rgb);
+	}
+
+	return alpha_support && alpha;
 }
 
 typedef struct {
-	GtkWidget *drawing_area;
-} clock_face_t;
+	GtkWidget *window;
+	gboolean alpha_enabled;
 
-void redraw_clock(clock_face_t *clock) {
-	printf("Redrawing clock\n");
-	cairo_t *cr = gdk_cairo_create(clock->drawing_area->window);
+	gulong handler_screen_changed;
+	gulong handler_exposed;
+} deskwidget_t;
 
-	/* apply proper coordinate transforms */
-	cairo_scale(cr, clock->drawing_area->allocation.width,
-	                clock->drawing_area->allocation.height);
-
-	/* make background transparent */
-	cairo_set_source_rgba(cr, 0, 0, 0, 0);
-	cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
-	cairo_paint(cr);
-
-	/* start with the background */
-	cairo_arc(cr, 0.5, 0.5, 0.5, 0, 2*pi);
-	cairo_set_source_rgb(cr, 0.5, 0.5, 0.5);
-	cairo_fill(cr);
-
-	cairo_destroy(cr);
+static void widgety_screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data) {
+	set_alpha(widget, TRUE);
 }
 
-gboolean clock_expose_event(GtkWidget *drawing_area, GdkEventExpose *event, clock_face_t *clock) {
-	/* redraw clock: */
-	redraw_clock(clock);
+static gboolean widgety_expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data) {
+	debug("Expose");
+	cairo_t *cr = gdk_cairo_create(widget->window);
+	cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.5);
+
+	cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+	cairo_paint(cr);
+	cairo_destroy(cr);
 
 	return FALSE;
+}
+
+void deskwidget_make_widgety(deskwidget_t *deskwidget) {
+	GtkWindow *window = GTK_WINDOW(deskwidget->window);
+
+	gtk_window_set_skip_taskbar_hint(window, TRUE);
+	gtk_window_set_skip_pager_hint(window, TRUE);
+	gtk_window_set_keep_below(window, TRUE);
+	gtk_window_set_decorated(window, FALSE);
+	gtk_widget_set_app_paintable(deskwidget->window, TRUE);
+
+	deskwidget->handler_screen_changed = g_signal_connect(G_OBJECT(window), "screen-changed",
+	                                                         G_CALLBACK(widgety_screen_changed), NULL);
+	deskwidget->handler_exposed = g_signal_connect(G_OBJECT(window), "expose-event",
+	                                               G_CALLBACK(widgety_expose), NULL);
+	deskwidget->alpha_enabled = set_alpha(deskwidget->window, TRUE);
+}
+
+void deskwidget_make_unwidgety(deskwidget_t *deskwidget) {
+	GtkWindow *window = GTK_WINDOW(deskwidget->window);
+
+	gtk_window_set_skip_taskbar_hint(window, FALSE);
+	gtk_window_set_skip_pager_hint(window, FALSE);
+	gtk_window_set_keep_below(window, FALSE);
+	gtk_window_set_decorated(window, TRUE);
+	gtk_widget_set_app_paintable(deskwidget->window, FALSE);
+
+	g_signal_handler_disconnect(G_OBJECT(window), deskwidget->handler_screen_changed);
+	deskwidget->alpha_enabled = set_alpha(deskwidget->window, FALSE);
+}
+
+deskwidget_t *deskwidget_new() {
+	deskwidget_t* deskwidget = g_new0(deskwidget_t, 1);
+	deskwidget->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	return deskwidget;
 }
 
 int main(int argc, char **argv) {
@@ -56,29 +98,11 @@ int main(int argc, char **argv) {
 
 	gtk_init(&argc, &argv);
 
-	clock_face_t c;
+	deskwidget_t *deskwidget = deskwidget_new();
 
-	GtkWidget *widget;
-
-	widget = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-	c.drawing_area = gtk_drawing_area_new();
-
-	/* initialize transparency */
-	GdkScreen *screen = gtk_widget_get_screen(c.drawing_area);
-	GdkColormap *rgba = gdk_screen_get_rgba_colormap(screen);
-	gtk_widget_set_colormap(c.drawing_area, rgba);
-	gtk_widget_set_app_paintable(c.drawing_area, TRUE);
-
-	gtk_container_add(GTK_CONTAINER(widget), c.drawing_area);
-
-	g_signal_connect(widget, "delete-event",
-	                 G_CALLBACK(gtk_main_quit), NULL);
-	g_signal_connect(G_OBJECT (c.drawing_area), "expose_event",
-	                 G_CALLBACK (clock_expose_event), &c);
-
-//	make_widgety(GTK_WINDOW(widget));
-
-	gtk_widget_show_all(widget);
+	deskwidget_make_widgety(deskwidget);
+	gtk_widget_show_all(deskwidget->window);
 	gtk_main();
+
 	return 0;
 }

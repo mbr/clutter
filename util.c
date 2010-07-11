@@ -22,6 +22,9 @@ void clutter_set_window_widgety(GtkWindow *window, gboolean enabled) {
 	gtk_window_set_skip_pager_hint(window, enabled);
 	gtk_window_set_keep_below(window, enabled);
 	gtk_window_set_decorated(window, ! enabled);
+
+	if (enabled) gtk_window_stick(window);
+	else gtk_window_unstick(window);
 	gtk_widget_set_app_paintable(GTK_WIDGET(window), enabled);
 	if (! clutter_set_widget_colormap(GTK_WIDGET(window), enabled)) {
 		g_warning("Could not set alpha-colormap on widget.");

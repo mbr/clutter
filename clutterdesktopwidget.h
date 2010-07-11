@@ -24,8 +24,14 @@ struct _ClutterDesktopWidget {
 struct _ClutterDesktopWidgetClass {
 	GtkWindowClass parent_class;
 
+	/* <vtable> */
+	gboolean (*on_expose)(ClutterDesktopWidget* self, GdkEventExpose *event);
+
 	/* <private> */
 };
+
+gboolean clutter_desktop_widget_on_expose(ClutterDesktopWidget* self, GdkEventExpose *event);
+gboolean clutter_desktop_widget_real_on_expose(ClutterDesktopWidget* self, GdkEventExpose *event);
 
 GType clutter_desktop_widget_get_type(void);
 ClutterDesktopWidget *clutter_desktop_widget_new();

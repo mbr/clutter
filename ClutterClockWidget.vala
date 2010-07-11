@@ -2,7 +2,7 @@ errordomain IOError {
 	COULD_NOT_LOAD
 }
 
-Cairo.ImageSurface load_svg(string filename, int width, int height) {
+Cairo.ImageSurface load_svg(string filename, int width, int height) throws IOError {
 	Gdk.Pixbuf pb;
 	try {
 		pb = Rsvg.pixbuf_from_file_at_size(filename, width, height);
@@ -61,16 +61,20 @@ class ClutterClockWidget : ClutterDesktopWidget {
 		string clock_second_hand_filename = this.theme_dir + "/clock-second-hand-shadow.svg";
 		string clock_second_hand_shadow_filename = this.theme_dir + "/clock-second-hand-shadow.svg";
 
-		clock_face = load_svg(clock_face_filename, this.allocation.width, this.allocation.height);
-		clock_drop_shadow = load_svg(clock_drop_shadow_filename, this.allocation.width, this.allocation.height);
-		clock_face_shadow = load_svg(clock_face_shadow_filename, this.allocation.width, this.allocation.height);
-		clock_frame = load_svg(clock_frame_filename, this.allocation.width, this.allocation.height);
-		clock_glass = load_svg(clock_glass_filename, this.allocation.width, this.allocation.height);
-		clock_marks = load_svg(clock_marks_filename, this.allocation.width, this.allocation.height);
-		clock_minute_hand = load_svg(clock_minute_hand_filename, this.allocation.width, this.allocation.height);
-		clock_minute_hand_shadow = load_svg(clock_minute_hand_shadow_filename, this.allocation.width, this.allocation.height);
-		clock_second_hand = load_svg(clock_second_hand_filename, this.allocation.width, this.allocation.height);
-		clock_second_hand_shadow = load_svg(clock_second_hand_shadow_filename, this.allocation.width, this.allocation.height);
+		try {
+			clock_face = load_svg(clock_face_filename, this.allocation.width, this.allocation.height);
+			clock_drop_shadow = load_svg(clock_drop_shadow_filename, this.allocation.width, this.allocation.height);
+			clock_face_shadow = load_svg(clock_face_shadow_filename, this.allocation.width, this.allocation.height);
+			clock_frame = load_svg(clock_frame_filename, this.allocation.width, this.allocation.height);
+			clock_glass = load_svg(clock_glass_filename, this.allocation.width, this.allocation.height);
+			clock_marks = load_svg(clock_marks_filename, this.allocation.width, this.allocation.height);
+			clock_minute_hand = load_svg(clock_minute_hand_filename, this.allocation.width, this.allocation.height);
+			clock_minute_hand_shadow = load_svg(clock_minute_hand_shadow_filename, this.allocation.width, this.allocation.height);
+			clock_second_hand = load_svg(clock_second_hand_filename, this.allocation.width, this.allocation.height);
+			clock_second_hand_shadow = load_svg(clock_second_hand_shadow_filename, this.allocation.width, this.allocation.height);
+		} catch(Error e) {
+			stderr.printf("Error while loading clock theme: %s", e.message);
+		}
 	}
 
 	public override bool on_expose() {

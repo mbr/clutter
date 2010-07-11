@@ -17,7 +17,7 @@ class ClutterDesktopWidget : Gtk.Window {
 		this.expose_event.connect(this.on_expose);
 	}
 
-	public bool on_expose() {
+	public virtual bool on_expose() {
 		Cairo.Context cr = Gdk.cairo_create(this.window);
 		cr.set_source_rgba(1.0, 1.0, 1.0, 0.5);
 		cr.set_operator(Cairo.Operator.SOURCE);

@@ -1,10 +1,10 @@
-gtkenv = Environment()
+env = Environment()
+env.ParseConfig('pkg-config --cflags --libs gtk+-2.0')
 
-gtkenv.Tool('vala', toolpath=['scons-tools'])
+env.Tool('vala', toolpath=['scons-tools'])
+env['VALACPACKAGES'] = ['gtk+-2.0']
 
-gtkenv['VALACPACKAGES'] = ['gtk+-2.0']
-gtkenv.ParseConfig('pkg-config --cflags --libs gtk+-2.0')
+vala_files = env.Glob('*.vala')
+vala_files_c = env.Vala(vala_files)
 
-widget_vala = ['ClutterDesktopWidget.vala']
-widget_c = gtkenv.Vala(widget_vala)
-widget_o = gtkenv.Object(widget_c)
+env.Program('main_test', vala_files_c)

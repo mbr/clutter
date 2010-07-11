@@ -7,7 +7,7 @@ env.ParseConfig('pkg-config --cflags --libs gtk+-2.0')
 util = env.Object('util.c')
 
 # widgets:
-widgets = []
-widgets.append(env.Object('clutterdesktopwidget.c'))
+widgets = [env.Object('clutterdesktopwidget.c'),
+           env.Object('clutterclockwidget.c')]
 
 env.Program(['clock_widget.c', util] + widgets)

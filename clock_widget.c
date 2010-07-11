@@ -3,7 +3,7 @@
 #include <cairo/cairo.h>
 #include <math.h>
 
-#include "clutterdesktopwidget.h"
+#include "clutterclockwidget.h"
 
 #if !G_DEBUG
 #define debug(...)
@@ -14,9 +14,9 @@
 int main(int argc, char **argv) {
 	gtk_init(&argc, &argv);
 
-	ClutterDesktopWidget *w = clutter_desktop_widget_new("My Desktop Widget");
+	ClutterClockWidget *clock = clutter_clock_widget_new("example_theme");
 
-	gtk_widget_show_all(GTK_WIDGET(w));
+	gtk_widget_show_all(GTK_WIDGET(clock));
 	gtk_main();
 
 	return 0;

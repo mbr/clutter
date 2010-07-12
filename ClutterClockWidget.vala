@@ -2,10 +2,10 @@ errordomain IOError {
 	COULD_NOT_LOAD
 }
 
-Cairo.ImageSurface load_svg(string filename, int width, int height) throws IOError {
-	Gdk.Pixbuf pb;
+Rsvg.Handle load_svg(string filename) throws IOError {
+	Rsvg.Handle pb;
 	try {
-		pb = Rsvg.pixbuf_from_file_at_size(filename, width, height);
+		pb = new Rsvg.Handle.from_file(filename);
 	} catch (GLib.Error e) {
 		stderr.printf("Error loading %s: %s", filename, e.message);
 		throw new IOError.COULD_NOT_LOAD("SVG load error");
@@ -15,145 +15,173 @@ Cairo.ImageSurface load_svg(string filename, int width, int height) throws IOErr
 		throw new IOError.COULD_NOT_LOAD("SVG load error");
 	}
 
-	Cairo.Format imgformat = Cairo.Format.RGB24;
-	if (pb.has_alpha) imgformat = Cairo.Format.ARGB32;
-
-	Cairo.ImageSurface s = new Cairo.ImageSurface(imgformat, pb.get_width(), pb.get_height());
-	Cairo.Context cr = new Cairo.Context(s);
-	Gdk.cairo_set_source_pixbuf(cr, pb, 0, 0);
-	cr.paint();
-
-	return s; 
+	return pb; 
 }
 
 class ClutterClockWidget : ClutterDesktopWidget {
+	protected enum ClockParts {
+		FACE = 0,
+		DROP_SHADOW,
+		FACE_SHADOW,
+		FRAME,
+		GLASS,
+		MARKS,
+		HOUR_HAND,
+		HOUR_HAND_SHADOW,
+		MINUTE_HAND,
+		MINUTE_HAND_SHADOW,
+		SECOND_HAND,
+		SECOND_HAND_SHADOW,
+		END
+	}
+
+	protected const string[] theme_filenames = {
+		"clock-face.svg",
+		"clock-drop-shadow.svg",
+		"clock-face-shadow.svg",
+		"clock-frame.svg",
+		"clock-glass.svg",
+		"clock-marks.svg",
+		"clock-hour-hand.svg",
+		"clock-hour-hand-shadow.svg",
+		"clock-minute-hand.svg",
+		"clock-minute-hand-shadow.svg",
+		"clock-second-hand-shadow.svg",
+		"clock-second-hand-shadow.svg"
+	};
+
 	protected string theme_dir;
 
-	protected Cairo.ImageSurface clock_layer_back;
-	protected Cairo.ImageSurface clock_layer_front;
-	protected Cairo.ImageSurface clock_hour_hand_full;
-	protected Cairo.ImageSurface clock_minute_hand_full;
-	protected Cairo.ImageSurface clock_second_hand_full;
+	enum ClockLayers {
+		FRONT = 0,
+		BACK,
+		HOUR_HAND,
+		MINUTE_HAND,
+		SECOND_HAND,
+		END
+	}
+
+	protected Cairo.ImageSurface[] layers;
 	
+	protected const int source_width_px = 100;
+	protected const int source_height_px = 100;
+	protected GLib.TimeVal current_time;
+
 	public ClutterClockWidget(string theme_dir) {
 		this.theme_dir = theme_dir;
 		this.size_allocate.connect(this.on_allocation_changed);
 	}
 
+	public void refresh_time() {
+		current_time.get_current_time();
+	}
+
 	public void on_allocation_changed() {
-		this.reload_theme();
+		reload_theme();
+		refresh_time();
 	}
 
 	public void reload_theme() {
-		string clock_face_filename = this.theme_dir + "/clock-face.svg";
-		string clock_drop_shadow_filename = this.theme_dir + "/clock-drop-shadow.svg";
-		string clock_face_shadow_filename = this.theme_dir + "/clock-face-shadow.svg";
-		string clock_frame_filename = this.theme_dir + "/clock-frame.svg";
-		string clock_glass_filename = this.theme_dir + "/clock-glass.svg";
-		string clock_marks_filename = this.theme_dir + "/clock-marks.svg";
-		string clock_hour_hand_filename = this.theme_dir + "/clock-hour-hand.svg";
-		string clock_hour_hand_shadow_filename = this.theme_dir + "/clock-hour-hand-shadow.svg";
-		string clock_minute_hand_filename = this.theme_dir + "/clock-minute-hand.svg";
-		string clock_minute_hand_shadow_filename = this.theme_dir + "/clock-minute-hand-shadow.svg";
-		string clock_second_hand_filename = this.theme_dir + "/clock-second-hand-shadow.svg";
-		string clock_second_hand_shadow_filename = this.theme_dir + "/clock-second-hand-shadow.svg";
-
-		Cairo.ImageSurface clock_face,
-		                   clock_drop_shadow,
-		                   clock_face_shadow,
-		                   clock_frame,
-		                   clock_glass,
-		                   clock_marks,
-		                   clock_hour_hand,
-		                   clock_hour_hand_shadow,
-		                   clock_minute_hand,
-		                   clock_minute_hand_shadow,
-		                   clock_second_hand,
-		                   clock_second_hand_shadow;
+		Rsvg.Handle[] theme = new Rsvg.Handle[ClockParts.END];
 
 		int width = this.allocation.width,
 		    height = this.allocation.height;
 
-		try {
-			clock_face = load_svg(clock_face_filename, width, height);
-			clock_drop_shadow = load_svg(clock_drop_shadow_filename, width, height);
-			clock_face_shadow = load_svg(clock_face_shadow_filename, width, height);
-			clock_frame = load_svg(clock_frame_filename, width, height);
-			clock_glass = load_svg(clock_glass_filename, width, height);
-			clock_marks = load_svg(clock_marks_filename, width, height);
-			clock_hour_hand = load_svg(clock_hour_hand_filename, width, height);
-			clock_hour_hand_shadow = load_svg(clock_hour_hand_shadow_filename, width, height);
-			clock_minute_hand = load_svg(clock_minute_hand_filename, width, height);
-			clock_minute_hand_shadow = load_svg(clock_minute_hand_shadow_filename, width, height);
-			clock_second_hand = load_svg(clock_second_hand_filename, width, height);
-			clock_second_hand_shadow = load_svg(clock_second_hand_shadow_filename, width, height);
-		} catch(Error e) {
-			stderr.printf("Error while loading clock theme: %s", e.message);
-			return;
+		for(int i = 0; i < ClockParts.END; ++i) {
+			try {
+				theme[i] = load_svg(theme_dir + "/" + theme_filenames[i]);
+			} catch(Error e) {
+				stderr.printf("Error while loading clock theme file %s: %s", theme_filenames[i], e.message);
+				return;
+			}
 		}
 
-		/* merge into appropriate layers */
-		clock_layer_back = new Cairo.ImageSurface(Cairo.Format.ARGB32, width, height);
-		clock_layer_front = new Cairo.ImageSurface(Cairo.Format.ARGB32, width, height);
-		clock_hour_hand_full = new Cairo.ImageSurface(Cairo.Format.ARGB32, width, height);
-		clock_minute_hand_full = new Cairo.ImageSurface(Cairo.Format.ARGB32, width, height);
-		clock_second_hand_full = new Cairo.ImageSurface(Cairo.Format.ARGB32, width, height);
+		/* initialize layers */
+		layers = new Cairo.ImageSurface[ClockParts.END];
+		for(int i = 0; i < ClockLayers.END; ++i) {
+			layers[i] = new Cairo.ImageSurface(Cairo.Format.ARGB32, width, height);
+		}
 
-		Cairo.Context cr = new Cairo.Context(clock_layer_back);
-		cr.set_source_surface(clock_drop_shadow, 0, 0);
-		cr.paint();
-		cr.set_source_surface(clock_face, 0, 0);
-		cr.paint();
-		cr.set_source_surface(clock_marks, 0, 0);
-		cr.paint();
+		Cairo.Context cr;
 
-		cr = new Cairo.Context(clock_layer_front);
-		cr.set_source_surface(clock_glass, 0, 0);
-		cr.paint();
-		cr.set_source_surface(clock_frame, 0, 0);
-		cr.paint();
+		cr = new Cairo.Context(layers[ClockLayers.BACK]);
+		cr.scale(width/source_width_px, height/source_height_px);
+		theme[ClockParts.DROP_SHADOW].render_cairo(cr);
+		theme[ClockParts.FACE].render_cairo(cr);
+		theme[ClockParts.MARKS].render_cairo(cr);
+
+		cr = new Cairo.Context(layers[ClockLayers.FRONT]);
+		cr.scale(width/source_width_px, height/source_height_px);
+		theme[ClockParts.GLASS].render_cairo(cr);
+		theme[ClockParts.FRAME].render_cairo(cr);
 
 		/* prepare hands */
-		cr = new Cairo.Context(clock_hour_hand_full);
-		cr.set_source_surface(clock_hour_hand_shadow, 0, 0);
-		cr.paint();
-		cr.set_source_surface(clock_hour_hand, 0, 0);
-		cr.paint();
+		cr = new Cairo.Context(layers[ClockLayers.HOUR_HAND]);
+		cr.translate(width/2, height/2);
+		cr.scale(width/source_width_px, height/source_height_px);
+		theme[ClockParts.HOUR_HAND_SHADOW].render_cairo(cr);
+		theme[ClockParts.HOUR_HAND].render_cairo(cr);
 
-		cr = new Cairo.Context(clock_minute_hand_full);
-		cr.set_source_surface(clock_minute_hand_shadow, 0, 0);
-		cr.paint();
-		cr.set_source_surface(clock_minute_hand, 0, 0);
-		cr.paint();
+		cr = new Cairo.Context(layers[ClockLayers.MINUTE_HAND]);
+		cr.translate(width/2, height/2);
+		cr.scale(width/source_width_px, height/source_height_px);
+		theme[ClockParts.MINUTE_HAND_SHADOW].render_cairo(cr);
+		theme[ClockParts.MINUTE_HAND].render_cairo(cr);
 
-		cr = new Cairo.Context(clock_second_hand_full);
-		cr.set_source_surface(clock_second_hand_shadow, 0, 0);
-		cr.paint();
-		cr.set_source_surface(clock_second_hand, 0, 0);
-		cr.paint();
+		cr = new Cairo.Context(layers[ClockLayers.SECOND_HAND]);
+		cr.translate(width/2, height/2);
+		cr.scale(width/source_width_px, height/source_height_px);
+		theme[ClockParts.SECOND_HAND_SHADOW].render_cairo(cr);
+		theme[ClockParts.SECOND_HAND].render_cairo(cr);
 	}
 
 	public override bool on_expose() {
+		/* recalculate time */
 		base.on_expose();
 
-		double width = this.allocation.width,
-		       height = this.allocation.height;
+		/* get local time */
+		GLib.Time local = GLib.Time.local(current_time.tv_sec);
+		double second = (local.second + (current_time.tv_usec/1000000.0)) % 60;
 
-		Cairo.Context cr = Gdk.cairo_create(this.window);
-		cr.set_source_surface(clock_layer_back, 0, 0);
+		stderr.printf("%d:%d:%f\n", local.hour, local.minute, second);
+
+		int width = this.allocation.width,
+		    height = this.allocation.height;
+
+		Cairo.Context cr;
+
+		cr = Gdk.cairo_create(this.window);
+		cr.set_source_surface(layers[ClockLayers.BACK], 0, 0);
 		cr.paint();
 
+		/* draw hour hand */
 		cr.save();
 		cr.translate(width/2, height/2);
-		cr.rotate(Math.PI*0.8);
-		cr.set_source_surface(clock_hour_hand_full, 0, 0);
+		cr.rotate(((local.hour%12)-3) * (Math.PI*2.0/12.0));
+		cr.translate(-width/2, -height/2);
+		cr.set_source_surface(layers[ClockLayers.HOUR_HAND], 0, 0);
 		cr.paint();
-		/* draw hour hand */
-		/* draw minute hand */
-		/* draw second hand */
 		cr.restore();
 
-		cr.set_source_surface(clock_layer_front, 0, 0);
+		/* draw minute hand */
+		cr.save();
+		cr.translate(width/2, height/2);
+		cr.rotate(((local.minute)-15) * (Math.PI*2.0/60.0));
+		cr.translate(-width/2, -height/2);
+		cr.set_source_surface(layers[ClockLayers.MINUTE_HAND], 0, 0);
+		cr.paint();
+		cr.restore();
+
+		/* draw second hand */
+		cr.save();
+		cr.translate(width/2, height/2);
+		cr.rotate(((second)-15.0) * (Math.PI*2.0/60.0));
+		cr.translate(-width/2, -height/2);
+		cr.set_source_surface(layers[ClockLayers.SECOND_HAND], 0, 0);
+		cr.paint();
+		cr.restore();
+
+		cr.set_source_surface(layers[ClockLayers.FRONT], 0, 0);
 		cr.paint();
 
 		return false;

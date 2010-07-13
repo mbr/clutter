@@ -67,13 +67,28 @@ class ClutterClockWidget : ClutterDesktopWidget {
 	protected const int source_height_px = 100;
 	protected GLib.TimeVal current_time;
 
+	protected int update_timer_id;
+
 	public ClutterClockWidget(string theme_dir) {
+		update_timer_id = 0;
+
 		this.theme_dir = theme_dir;
-		this.size_allocate.connect(this.on_allocation_changed);
+		size_allocate.connect(on_allocation_changed);
+		set_update_interval(500);
 	}
 
 	public void refresh_time() {
 		current_time.get_current_time();
+	}
+
+	public void set_update_interval(uint32 interval) {
+		if (0 != update_timer_id) Source.remove(update_timer_id);
+
+		Timeout.add(interval, () => {
+			refresh_time();
+			on_expose();
+			return true;
+		});
 	}
 
 	public void on_allocation_changed() {

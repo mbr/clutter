@@ -158,8 +158,6 @@ class ClutterClockWidget : ClutterDesktopWidget {
 		GLib.Time local = GLib.Time.local(current_time.tv_sec);
 		double second = (local.second + (current_time.tv_usec/1000000.0)) % 60;
 
-		stderr.printf("%d:%d:%f\n", local.hour, local.minute, second);
-
 		int width = this.allocation.width,
 		    height = this.allocation.height;
 

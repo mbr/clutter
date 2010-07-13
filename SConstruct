@@ -9,4 +9,4 @@ env['VALACPACKAGES'] = ['gtk+-2.0','librsvg-2.0','posix']
 vala_files = env.Glob('*.vala')
 vala_files_c = env.Vala(vala_files)
 
-env.Program('main_test', vala_files_c)
+env.Program('clutter_desktop_clock', vala_files_c)

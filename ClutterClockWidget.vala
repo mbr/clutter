@@ -74,7 +74,7 @@ class ClutterClockWidget : ClutterDesktopWidget {
 
 		this.theme_dir = theme_dir;
 		size_allocate.connect(on_allocation_changed);
-		set_update_interval(500);
+		set_update_interval(80);
 	}
 
 	public void refresh_time() {

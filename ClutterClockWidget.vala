@@ -46,7 +46,7 @@ class ClutterClockWidget : ClutterDesktopWidget {
 		"clock-hour-hand-shadow.svg",
 		"clock-minute-hand.svg",
 		"clock-minute-hand-shadow.svg",
-		"clock-second-hand-shadow.svg",
+		"clock-second-hand.svg",
 		"clock-second-hand-shadow.svg"
 	};
 

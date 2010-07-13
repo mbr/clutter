@@ -68,13 +68,21 @@ class ClutterClockWidget : ClutterDesktopWidget {
 	protected GLib.TimeVal current_time;
 
 	protected int update_timer_id;
+	bool subsecond_accuray;
 
 	public ClutterClockWidget(string theme_dir) {
 		update_timer_id = 0;
 
 		this.theme_dir = theme_dir;
 		size_allocate.connect(on_allocation_changed);
-		set_update_interval(80);
+
+		set_subsecond_accuray(false);
+	}
+
+	public void set_subsecond_accuray(bool enable) {
+		subsecond_accuray = enable;
+		if (enable) set_update_interval(80);
+		else set_update_interval(1000);
 	}
 
 	public void refresh_time() {
@@ -156,7 +164,9 @@ class ClutterClockWidget : ClutterDesktopWidget {
 
 		/* get local time */
 		GLib.Time local = GLib.Time.local(current_time.tv_sec);
-		double second = (local.second + (current_time.tv_usec/1000000.0)) % 60;
+
+		double second = local.second % 60;
+		if (subsecond_accuray) second = (second + (current_time.tv_usec/1000000.0)) % 60;
 
 		int width = this.allocation.width,
 		    height = this.allocation.height;

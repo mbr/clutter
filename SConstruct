@@ -1,5 +1,4 @@
-env = Environment(tools = ['default', 'vala', 'disttar'], toolpath = ['scons-tools'])
-env['DISTTAR_FORMAT'] = 'bz2'
+env = Environment(tools = ['default', 'vala', 'archive'], toolpath = ['scons-tools'])
 
 env.ParseConfig('pkg-config --cflags --libs gtk+-2.0')
 env['CFLAGS'] += ['-I/usr/include/librsvg-2']
@@ -14,6 +13,5 @@ compile = env.Program('clutter_desktop_clock', vala_files_c)
 
 Default(compile)
 
-env.Alias("release",
-         AlwaysBuild(env.DistTar('dist/clutter_desktop_clock-binary', ['README', 'clutter_desktop_cloc', env.Dir('theme')]))
-)
+env['ARCHIVE_PREFIX'] = 'clutter-desktop-clock'
+Alias('release', env.Archive('dist/clutter-desktop-clock.tar.bz2', ['clutter_desktop_clock'] + env.Glob('theme/*.svg')))
